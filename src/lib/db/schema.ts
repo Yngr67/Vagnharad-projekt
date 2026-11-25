@@ -46,6 +46,10 @@ export const documents = pgTable(
     importError: text("import_error"),
     markdown: text("markdown"),
     removed: boolean("removed").notNull().default(false),
+    /** Vilken bearbetning filen senast gick igenom (läsarversion, AI). Annan signatur ⇒ läs om. */
+    processedWith: text("processed_with"),
+    /** Innehållshash för tidplanen i filen (samma som schedule_versions.content_hash). */
+    contentHash: text("content_hash"),
     lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }).notNull(),
     searchVector: tsvector("search_vector").generatedAlwaysAs(
       sql`to_tsvector('swedish', coalesce(name, '') || ' ' || coalesce(markdown, ''))`,

@@ -11,16 +11,16 @@ export class P6ParseError extends Error {
   }
 }
 
-/** Sidhuvud, sidfot, kolumnrubriker och teckenförklaring som upprepas på varje sida. */
+/** Hela rader som bara är tidsaxel eller teckenförklaring (kan börja med siffror). */
+const AXIS_LINES: RegExp[] = [/^(\d{4}\s*)+$/, /^(Q\d?\s*)+$/, /^(A\s*)+$/];
+
+/** Sidhuvud, sidfot, kolumnrubriker och teckenförklaring. Gäller bara rader utan radnummer. */
 const FURNITURE: RegExp[] = [
   /Avstämningslinje:/,
   /^Baseline:/,
   /^#(\s|$)/,
   /^Activity (ID|Name)/,
   /^((Remaining|Start|Finish|Duration)\s*)+$/,
-  /^(\d{4}\s*)+$/,
-  /^(Q\d?\s*)+$/,
-  /^(A\s*)+$/,
   /Level of Effort/,
   /Critical Remaining Work/,
   /^Milestone/,
@@ -51,9 +51,10 @@ export function parseP6Pdf(pages: PdfLine[][]): ParsedSchedule {
 
   for (const line of all) {
     const text = line.text;
-    if (!text || FURNITURE.some((re) => re.test(text))) continue;
+    if (!text || AXIS_LINES.some((re) => re.test(text))) continue;
     const tokens = tokenize(line);
     if (!/^\d+$/.test(tokens[0]?.s ?? "")) {
+      if (FURNITURE.some((re) => re.test(text))) continue;
       if (lastName && isLabelOf(text, lastName)) continue;
       unparsedLines.push(text);
       continue;
@@ -205,11 +206,13 @@ export function wbsTitle(words: string[]): string | null {
       const [a, b] = [words[k], words[k + 1]];
       if (a === b || b.startsWith(a)) pairs.push(b);
       else if (a.startsWith(b)) pairs.push(a);
-      else return CODE.test(words.join(" ")) ? null : words.join(" ");
+      else return null;
     }
     return pairs.join(" ");
   }
-  return CODE.test(words.join(" ")) ? null : words.join(" ");
+  // Inga tecken på dubblering: inte en WBS-rubrik. Är det inte heller ett känt aktivitets-ID
+  // hamnar raden bland "ej tolkade rader" i stället för att tyst bli en rubrik.
+  return null;
 }
 
 /** Stapeletiketter i Gantt-delen upprepar aktivitetens (ev. avkortade) namn. */

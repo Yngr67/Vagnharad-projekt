@@ -145,6 +145,67 @@ describe("runSync", () => {
   });
 });
 
+describe("runSync after final review", () => {
+  it("a file that failed is retried on the next sync even if md5 is unchanged", async () => {
+    const drive = new FakeDriveClient([{ ...schedule(), content: new TextEncoder().encode("trasig") }]);
+    const r1 = await runSync(t.db, drive, { rootFolderId: ROOT });
+    expect(r1.errors).toHaveLength(1);
+    drive.setFiles([schedule()]); // samma md5, nu läsbar (tillfälligt fel)
+    const r2 = await runSync(t.db, drive, { rootFolderId: ROOT });
+    expect(r2.errors).toEqual([]);
+    expect(r2.newScheduleVersions).toBe(1);
+  });
+
+  it("minutes are processed when the hook is added later or failed before", async () => {
+    const drive = new FakeDriveClient([minutes()]);
+    await runSync(t.db, drive, { rootFolderId: ROOT });
+    let calls = 0;
+    const failing = async () => {
+      calls++;
+      throw new Error("AI nere");
+    };
+    const r = await runSync(t.db, drive, { rootFolderId: ROOT, onMinutes: failing });
+    expect(r.errors).toHaveLength(1);
+    const seen: string[] = [];
+    await runSync(t.db, drive, { rootFolderId: ROOT, onMinutes: async (d) => void seen.push(d.driveFileId) });
+    await runSync(t.db, drive, { rootFolderId: ROOT, onMinutes: async (d) => void seen.push(d.driveFileId) });
+    expect(calls).toBe(1);
+    expect(seen).toEqual(["m1"]);
+  });
+
+  it("deleting the original of a duplicated schedule keeps the version current", async () => {
+    const { getCurrentVersion } = await import("@/lib/overview/get-overview");
+    const drive = new FakeDriveClient([schedule(), { ...schedule(), id: "s1-copy", name: "Kopia.pdf", md5Checksum: "md5-copy" }]);
+    await runSync(t.db, drive, { rootFolderId: ROOT });
+    drive.setFiles([{ ...schedule(), id: "s1-copy", name: "Kopia.pdf", md5Checksum: "md5-copy" }]);
+    await runSync(t.db, drive, { rootFolderId: ROOT });
+    const [p] = await t.db.select().from(projects);
+    const current = await getCurrentVersion(t.db, p.id);
+    expect(current?.dataDate).toBe("2026-09-15");
+    expect((await counts()).versions).toBe(1);
+  });
+
+  it("a file moved into Tidplaner is re-classified and imported", async () => {
+    const drive = new FakeDriveClient([{ ...schedule(), folderPath: "Övrigt" }]);
+    await runSync(t.db, drive, { rootFolderId: ROOT });
+    expect((await counts()).versions).toBe(0);
+    drive.setFiles([schedule()]);
+    const r = await runSync(t.db, drive, { rootFolderId: ROOT });
+    expect(r.newScheduleVersions).toBe(1);
+    const [d] = await t.db.select().from(documents);
+    expect(d.docType).toBe("schedule");
+  });
+
+  it("an empty Drive listing does not mark existing documents removed", async () => {
+    const drive = new FakeDriveClient([schedule(), minutes()]);
+    await runSync(t.db, drive, { rootFolderId: ROOT });
+    drive.setFiles([]);
+    await expect(runSync(t.db, drive, { rootFolderId: ROOT })).rejects.toThrow(/tom/);
+    const docs = await t.db.select().from(documents);
+    expect(docs.some((d) => d.removed)).toBe(false);
+  });
+});
+
 describe("classify", () => {
   const f = (name: string, folderPath: string): DriveFile => ({
     id: "x", name, folderPath, mimeType: "application/pdf", modifiedTime: "", md5Checksum: null, trashed: false,
