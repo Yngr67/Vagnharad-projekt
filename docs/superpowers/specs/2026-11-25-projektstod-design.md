@@ -53,7 +53,10 @@ eftersom han vill öppna verktyget och direkt se läget, med historik över tid.
 - **Actions** finns i mötesprotokoll (fri text), i tidplanen, eller förs in
   manuellt.
 - **Driftmiljö:** Peters egen server `kupp-server`, endast nåbar via Peters
-  Tailscale-nät. Okänd OS/Docker-status (utreds vid driftsättning).
+  Tailscale-nät. Äldre PC: AMD Ryzen 5 (x86-64), GTX 1060 4 GB. OS och
+  Docker-status utreds vid driftsättning. Grafikkortet kan i teorin köra en
+  liten lokal AI-modell, men 4 GB räcker sannolikt inte för pålitlig
+  utplockning på svenska; etapp 1 förutsätter ingen lokal AI.
   Utvecklingsmiljön (Claude-molnet) når **inte** servern.
 - **Sekretess:** Trafikverkets data. Peter kontrollerar själv vad
   uppdragsavtalet tillåter. Tills dess är AI-anrop avstängda som standard.
@@ -101,10 +104,13 @@ En användare. Lösenordet anges som hash i miljövariabel
 - `projects` – id, kod (t.ex. `OL41`), namn, status, start, slut.
 - `documents` – Drive file_id (unik), namn, mimeType, mappväg, Drive
   `modifiedTime`, `md5Checksum`, senast synkad, typ (`schedule`, `minutes`,
-  `requirements`, `other`), importstatus/felmeddelande.
+  `requirements`, `other`), importstatus/felmeddelande, samt **`markdown`**
+  (filens innehåll konverterat till Markdown) och ett fulltextindex
+  (PostgreSQL `tsvector`, svensk ordlista) över det.
 - `schedule_versions` – en rad per inläst tidplanfil och version:
   projekt, dokument, källformat (`p6_pdf`, senare `p6_xer`), avstämningsdatum,
-  baslinjenamn, utskriftsdatum. Unik på (dokument, checksum).
+  baslinjenamn, utskriftsdatum, **projekt-ID ur filens innehåll** (t.ex.
+  "Project ID: OL41"). Unik på (dokument, checksum).
 - `schedule_activities` – per version: aktivitets-ID, namn, WBS-sökväg,
   kvarvarande dagar, start, slut, `start_actual`, `finish_actual` (från `A`),
   låst datum (`*`), är_milstolpe (kvarvarande 0 och start = slut eller saknas).
@@ -115,8 +121,11 @@ En användare. Lösenordet anges som hash i miljövariabel
   `protokoll`, `tidplan`), länk till dokument och ev. aktivitets-ID,
   `source_key` (för dubblettskydd), skapad/ändrad.
 
-Historik: varje ny tidplanfil eller ändrad fil ger en ny `schedule_version`;
-äldre versioner raderas inte. Det möjliggör trendjämförelse i etapp 2.
+Historik: Peter laddar upp **en ny fil** för varje ny tidplanversion (filer
+ersätts inte). Versioner grupperas därför till en serie på **projekt-ID ur
+PDF-huvudet** (inte filnamnet) och ordnas efter avstämningsdatum. Senaste
+versionen i serien är "aktuell". Äldre versioner raderas inte – det ger
+trendjämförelse i etapp 2.
 
 ### 6.4 Drive-synk
 
@@ -128,6 +137,23 @@ Historik: varje ny tidplanfil eller ändrad fil ger en ny `schedule_version`;
   (innehåller "protokoll"/"minnesanteckningar" → minutes).
 - Körs manuellt via knapp "Synka nu" och automatiskt en gång per natt.
 - **Idempotent:** att köra synken två gånger ger inga nya rader.
+
+### 6.4b Konvertering till Markdown och sökning
+
+- **Alla** synkade filer konverteras till Markdown vid synk (Peters krav, för
+  snabbare sökning och hantering). Word (`.docx`) → Markdown med rubriker,
+  listor och tabeller bevarade. PDF → Markdown ur textlagret. Google Docs →
+  export som Markdown/text.
+- Markdown lagras i databasen (`documents.markdown`), inte i Drive.
+  *(Byggarens val:)* service-konton kan normalt inte skapa filer i en privat
+  Drive, och skrivrätt till Drive vore en onödig risk. Export av Markdown som
+  filer kan läggas till senare.
+- Fulltextsökning över alla dokument i en sökvy, med träffutdrag och länk
+  till originalet i Drive.
+- Tidplan-, protokoll- och AI-tolkning läser från Markdown/text, inte från
+  originalfilen, så konverteringen görs en gång per filversion.
+- Inskannade PDF:er utan textlager markeras "kräver OCR" och hoppas över i
+  etapp 1.
 
 ### 6.5 Tidplaninläsning
 
@@ -157,7 +183,7 @@ Historik: varje ny tidplanfil eller ändrad fil ger en ny `schedule_version`;
 - **Manuella:** skapa/redigera/stäng i UI.
 - **Ur tidplan:** Peter kan markera en aktivitet/milstolpe som action
   (länkas via aktivitets-ID; `source_key` = `tidplan:<projekt>:<aktivitets-ID>`).
-- **Ur protokoll:** AI läser protokollet och skapar actions med status
+- **Ur protokoll (Word eller PDF):** AI läser protokollets Markdown och skapar actions med status
   `föreslagen`. De räknas inte förrän Peter godkänt dem.
   `source_key` = `protokoll:<file_id>:<hash av normaliserad text>`;
   en redan föreslagen/godkänd/avvisad nyckel skapas aldrig igen.
@@ -187,6 +213,8 @@ milstolpar", tidsfönster, sök. Väljare för tidplanversion.
 **Actions:** lista med filter, inkorg för `föreslagna`.
 
 **Dokument:** synkade filer, typ, importstatus och fel.
+
+**Sök:** fulltextsökning i alla dokuments Markdown.
 
 ### 6.8 Felhantering
 
