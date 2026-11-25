@@ -35,7 +35,7 @@ describe("POST /api/sync", () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.scanned).toBeGreaterThan(0);
-    expect(body.newScheduleVersions).toBe(1);
+    expect(body.newScheduleVersions).toBe(2);
   });
 
   it("sync route accepts session cookie", async () => {
