@@ -52,3 +52,13 @@ export const PAGES: FixtureRow[][] = [
 ];
 
 export const EXPECTED_ACTIVITY_COUNT = 8;
+
+/** Version 2: avstämning en månad senare, slutmilstolpen har glidit. */
+export const PAGE_HEADER_V2 = [
+  "Projekttidplan Testbana (Tb) - Testtidplan Avstämningslinje: 15-Oct-26",
+  PAGE_HEADER[1],
+  PAGE_HEADER[2],
+];
+export const PAGES_V2: FixtureRow[][] = PAGES.map((rows) =>
+  rows.map((r) => (r.kind === "act" && r.id === "Prv220" ? { ...r, finish: "30-Sep-29" } : r)),
+);

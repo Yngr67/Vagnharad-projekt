@@ -2,19 +2,21 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { Document, HeadingLevel, Packer, Paragraph, Table, TableCell, TableRow, TextRun } from "docx";
-import { COL, PAGES, PAGE_FOOTER, PAGE_HEADER, type FixtureRow } from "./p6-synthetic";
+import { COL, PAGES, PAGES_V2, PAGE_FOOTER, PAGE_HEADER, PAGE_HEADER_V2, type FixtureRow } from "./p6-synthetic";
 
 export const OUT = path.resolve(__dirname, "out");
 
-async function makeP6Pdf(): Promise<Uint8Array> {
+type PdfVariant = { header: string[]; pages: FixtureRow[][] };
+
+async function makeP6Pdf(v: PdfVariant = { header: PAGE_HEADER, pages: PAGES }): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const size = 7;
-  for (const [pi, rows] of PAGES.entries()) {
+  for (const [pi, rows] of v.pages.entries()) {
     const page = pdf.addPage([842, 595]);
     let y = 570;
     const text = (s: string, x: number, yy = y) => page.drawText(s, { x, y: yy, size, font, color: rgb(0, 0, 0) });
-    for (const h of PAGE_HEADER) {
+    for (const h of v.header) {
       text(h, COL.row);
       y -= 12;
     }
@@ -36,7 +38,7 @@ async function makeP6Pdf(): Promise<Uint8Array> {
       text(f, COL.row);
       y -= 10;
     }
-    text(`Sida ${pi + 1} av ${PAGES.length}`, 700, 30);
+    text(`Sida ${pi + 1} av ${v.pages.length}`, 700, 30);
   }
   return pdf.save();
 }
@@ -73,6 +75,16 @@ function drawRow(
   next();
 }
 
+/** En vanlig text-PDF utan P6-huvud (motsvarar en grafisk programtidplan). */
+async function makePlainPdf(): Promise<Uint8Array> {
+  const pdf = await PDFDocument.create();
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  const page = pdf.addPage([842, 595]);
+  ["Programtidplan Testprogrammet Datum: Juni-26", "Projekt Testbana", "Systemhandling klar", "Järnvägsplan laga kraft"]
+    .forEach((s, i) => page.drawText(s, { x: 40, y: 550 - i * 14, size: 9, font }));
+  return pdf.save();
+}
+
 async function makeScannedPdf(): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
   const page = pdf.addPage([595, 842]);
@@ -106,7 +118,9 @@ async function makeDocx(): Promise<Buffer> {
 export async function makeFixtures(): Promise<void> {
   mkdirSync(OUT, { recursive: true });
   writeFileSync(path.join(OUT, "p6-synthetic.pdf"), await makeP6Pdf());
+  writeFileSync(path.join(OUT, "p6-synthetic-v2.pdf"), await makeP6Pdf({ header: PAGE_HEADER_V2, pages: PAGES_V2 }));
   writeFileSync(path.join(OUT, "scanned.pdf"), await makeScannedPdf());
+  writeFileSync(path.join(OUT, "protokoll-as-pdf.pdf"), await makePlainPdf());
   writeFileSync(path.join(OUT, "protokoll.docx"), await makeDocx());
 }
 
