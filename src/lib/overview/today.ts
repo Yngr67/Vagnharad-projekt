@@ -20,3 +20,9 @@ export function addDays(date: string, days: number): string {
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 }
+
+/** Dagens datum för appen. APP_TODAY kan sättas i tester för ett fast datum. */
+export function appToday(): string {
+  const fixed = process.env.APP_TODAY;
+  return fixed && /^\d{4}-\d{2}-\d{2}$/.test(fixed) ? fixed : todayInStockholm();
+}

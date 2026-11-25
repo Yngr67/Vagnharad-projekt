@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeAll, afterEach, vi } from "vitest";
-import bcrypt from "bcryptjs";
 import { NextRequest } from "next/server";
-import { verifyPassword } from "@/lib/auth/password";
+import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSessionToken, verifySessionToken, SESSION_COOKIE } from "@/lib/auth/session";
 import { middleware } from "@/middleware";
 
@@ -13,8 +12,18 @@ afterEach(() => {
 });
 
 describe("password", () => {
+  it("hash contains no $ so .env loaders cannot mangle it", async () => {
+    const hash = await hashPassword("hemligt");
+    expect(hash).toMatch(/^scrypt:[0-9a-f]+:[0-9a-f]+$/);
+  });
+
+  it("verifyPassword rejects malformed hash", async () => {
+    expect(await verifyPassword("x", "")).toBe(false);
+    expect(await verifyPassword("x", "$2a$04$garbage")).toBe(false);
+  });
+
   it("verifyPassword accepts correct and rejects wrong", async () => {
-    const hash = bcrypt.hashSync("hemligt", 4);
+    const hash = await hashPassword("hemligt");
     expect(await verifyPassword("hemligt", hash)).toBe(true);
     expect(await verifyPassword("fel", hash)).toBe(false);
   });

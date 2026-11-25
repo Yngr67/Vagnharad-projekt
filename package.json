@@ -8,11 +8,11 @@
     "start": "next start",
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx scripts/migrate.ts"
+    "db:migrate": "tsx scripts/migrate.ts",
+    "test:e2e": "playwright test --trace off"
   },
   "dependencies": {
     "@googleapis/drive": "^27.1.0",
-    "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.45.4",
     "google-auth-library": "^11.3.4",
     "jose": "^6.2.18",
@@ -26,6 +26,7 @@
     "turndown-plugin-gfm": "^1.0.2"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^22.20.7",
     "@types/react": "^19",
