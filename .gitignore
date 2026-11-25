@@ -44,3 +44,4 @@ next-env.d.ts
 /tests/fixtures/out/
 /test-results/
 /playwright-report/
+/secrets/

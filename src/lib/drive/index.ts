@@ -14,8 +14,9 @@ const MIME: Record<string, string> = {
 /** Väljer Drive-klient: riktig (service account) eller fejk (DRIVE_CLIENT=fake, för utveckling/test). */
 export function getDriveClient(): DriveClient {
   if (process.env.DRIVE_CLIENT === "fake") return fakeFromDir(process.env.DRIVE_FAKE_DIR ?? "tests/fixtures/out");
-  const json = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-  if (!json) throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON saknas");
+  const file = process.env.GOOGLE_SERVICE_ACCOUNT_FILE;
+  const json = file ? readFileSync(file, "utf8") : process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  if (!json) throw new Error("Varken GOOGLE_SERVICE_ACCOUNT_FILE eller GOOGLE_SERVICE_ACCOUNT_JSON är satt");
   return createGoogleDriveClient(json);
 }
 
