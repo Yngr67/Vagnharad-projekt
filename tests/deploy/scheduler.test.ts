@@ -1,5 +1,4 @@
 import { describe, it, expect } from "vitest";
-// @ts-expect-error – ren JavaScript-modul utan typer
 import { shouldRun } from "../../docker/scheduler.mjs";
 
 describe("scheduler.shouldRun", () => {
