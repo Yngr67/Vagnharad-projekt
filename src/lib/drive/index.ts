@@ -22,12 +22,14 @@ export function getDriveClient(): DriveClient {
 /** Fejk-Drive från en mapp med påhittade testfiler. Tidplaner hamnar i "Tidplaner", övrigt i "Möten". */
 function fakeFromDir(dir: string): FakeDriveClient {
   const files: FakeFile[] = readdirSync(dir)
-    .filter((n) => MIME[path.extname(n)] && n !== "scanned.pdf" && n !== "p6-synthetic-v2.pdf")
+    .filter((n) => MIME[path.extname(n)] && n !== "scanned.pdf")
     .map((n) => {
       const isSchedule = n.startsWith("p6-");
       return {
         id: `fake-${n}`,
-        name: isSchedule ? "XX99 Testtidplan.pdf" : n.replace(/^protokoll/, "Protokoll byggmöte"),
+        name: isSchedule
+          ? n.includes("v2") ? "XX99 Testtidplan okt.pdf" : "XX99 Testtidplan sep.pdf"
+          : n.replace(/^protokoll/, "Protokoll byggmöte"),
         mimeType: MIME[path.extname(n)],
         folderPath: isSchedule ? "Tidplaner" : "Möten",
         modifiedTime: "2026-09-20T08:00:00Z",
