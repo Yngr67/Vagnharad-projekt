@@ -1,0 +1,46 @@
+{
+  "name": "projektstod",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "vitest run",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "test:e2e": "playwright test --trace off"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.14.0",
+    "@googleapis/drive": "^27.1.0",
+    "drizzle-orm": "^0.45.4",
+    "google-auth-library": "^11.3.4",
+    "jose": "^6.2.18",
+    "mammoth": "^1.13.0",
+    "next": "15.5.29",
+    "pdfjs-dist": "^6.5.438",
+    "postgres": "^4.1.1",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "turndown": "^7.2.5",
+    "turndown-plugin-gfm": "^1.0.2",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^22.20.7",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/turndown": "^5.0.6",
+    "docx": "^9.16.0",
+    "dotenv": "^18.0.10",
+    "drizzle-kit": "^0.31.11",
+    "pdf-lib": "^1.17.1",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.15",
+    "typescript": "^5",
+    "vitest": "^5.1.2"
+  }
+}

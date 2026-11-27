@@ -1,0 +1,46 @@
+# Starta allt:      docker compose up -d --build
+# Se loggar:        docker compose logs -f app
+# Stoppa:           docker compose down        (data ligger kvar i volymen pgdata)
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: projektstod
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Sätt POSTGRES_PASSWORD i .env}
+      POSTGRES_DB: projektstod
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U projektstod -d projektstod"]
+      interval: 5s
+      retries: 20
+
+  app:
+    build: .
+    image: projektstod:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://projektstod:${POSTGRES_PASSWORD}@db:5432/projektstod
+      GOOGLE_SERVICE_ACCOUNT_FILE: /run/secrets/google-service-account.json
+    volumes:
+      - ./secrets/google-service-account.json:/run/secrets/google-service-account.json:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  scheduler:
+    image: projektstod:latest
+    restart: unless-stopped
+    command: ["node", "docker/scheduler.mjs"]
+    environment:
+      SYNC_URL: http://app:3000/api/sync
+      SYNC_TOKEN: ${SYNC_TOKEN:?Sätt SYNC_TOKEN i .env}
+    depends_on:
+      - app
+
+volumes:
+  pgdata:
